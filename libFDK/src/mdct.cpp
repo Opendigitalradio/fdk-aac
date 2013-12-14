@@ -285,6 +285,9 @@ void imdct_gain(FIXP_DBL *pGain_m, int *pGain_e, int tl) {
   log2_tl = DFRACT_BITS - 1 - fNormz((FIXP_DBL)tl);
   gain_e += -log2_tl;
 
+  FDK_ASSERT(log2_tl - 2 >= 0);
+  FDK_ASSERT(log2_tl - 2 < 8*sizeof(int));
+
   /* Detect non-radix 2 transform length and add amplitude compensation factor
      which cannot be included into the exponent above */
   switch ((tl) >> (log2_tl - 2)) {

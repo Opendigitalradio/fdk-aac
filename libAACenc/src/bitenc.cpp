@@ -100,6 +100,7 @@ amm-info@iis.fraunhofer.de
 
 *******************************************************************************/
 
+#include <stdio.h>
 #include "bitenc.h"
 #include "bit_cnt.h"
 #include "dyn_bits.h"
@@ -1195,6 +1196,23 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
 
   frameBits = bitMarkUp = alignAnchor;
 
+
+  /* Write DSEs first in case of DAB */
+  for (n = 0; (n < qcOut->nExtensions) && (n < (2+2)); n++) {
+      if ( (syntaxFlags & AC_DAB) &&
+         (qcOut->extension[n].type == EXT_DATA_ELEMENT) ) {
+        FDKaacEnc_writeExtensionData( hTpEnc,
+                                     &qcOut->extension[n],
+                                      0,
+                                      alignAnchor,
+                                      syntaxFlags,
+                                      aot,
+                                      epConfig );
+      }
+
+    /* For EXT_FIL or EXT_FILL_DATA we could do an additional sanity check here */
+  }
+
   /* Channel element loop */
   for (i = 0; i < channelMapping->nElements; i++) {
     ELEMENT_INFO elInfo = channelMapping->elInfo[i];
@@ -1281,20 +1299,40 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
   n = qcOut->nExtensions;
 
   /* Add fill data / stuffing bits */
-  qcOut->extension[n].type = EXT_FILL_DATA;
-  qcOut->extension[n].nPayloadBits = qcOut->totFillBits;
-  qcOut->nExtensions++;
+  n = qcOut->nExtensions;
+
+//  if (!(syntaxFlags & AC_DAB)) {
+	  qcOut->extension[n].type = EXT_FILL_DATA;
+	  qcOut->extension[n].nPayloadBits = qcOut->totFillBits;
+	  qcOut->nExtensions++;
+//  } else {
+//	  doByteAlign = 0;
+//  }
+  if (syntaxFlags & AC_DAB)
+	  doByteAlign = 0;
 
   /* Write global extension payload and fill data */
-  for (n = 0; (n < qcOut->nExtensions) && (n < (2 + 2)); n++) {
-    FDKaacEnc_writeExtensionData(hTpEnc, &qcOut->extension[n], 0, alignAnchor,
-                                 syntaxFlags, aot, epConfig);
+  for (n = 0; (n < qcOut->nExtensions) && (n < (2+2)); n++)
+  {
+      if ( !(syntaxFlags & AC_DAB) ||
+              ( (syntaxFlags & AC_DAB) &&
+                (qcOut->extension[n].type != EXT_DATA_ELEMENT)
+              )
+         ) {
+        FDKaacEnc_writeExtensionData( hTpEnc,
+                                     &qcOut->extension[n],
+                                      0,
+                                      alignAnchor,
+                                      syntaxFlags,
+                                      aot,
+                                      epConfig );
+      }
 
     /* For EXT_FIL or EXT_FILL_DATA we could do an additional sanity check here
      */
   }
 
-  if (!(syntaxFlags & (AC_SCALABLE | AC_ER))) {
+  if (!(syntaxFlags & (AC_SCALABLE | AC_ER | AC_DAB))) {
     FDKwriteBits(hBs, ID_END, EL_ID_BITS);
   }
 
@@ -1312,9 +1350,11 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
 
   transportEnc_EndAccessUnit(hTpEnc, &frameBits);
 
-  if (frameBits != qcOut->totalBits + qcKernel->globHdrBits) {
+  if (frameBits != qcOut->totalBits + qcKernel->globHdrBits){
+    fprintf(stderr, "frameBits != qcOut->totalBits + qcKernel->globHdrBits: %d != %d + %d", frameBits, qcOut->totalBits, qcKernel->globHdrBits);
     return AAC_ENC_WRITTEN_BITS_ERROR;
   }
 
+  //fprintf(stderr, "ErrorStatus=%d", ErrorStatus);
   return ErrorStatus;
 }

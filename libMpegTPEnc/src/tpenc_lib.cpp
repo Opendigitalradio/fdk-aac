@@ -113,6 +113,8 @@ amm-info@iis.fraunhofer.de
 
 #include "tpenc_adif.h"
 
+#include "tpenc_dab.h"
+
 #include "tpenc_latm.h"
 
 typedef struct {
@@ -136,6 +138,8 @@ struct TRANSPORTENC {
     STRUCT_ADTS adts;
 
     ADIF_INFO adif;
+
+    STRUCT_DAB dab;
 
     LATM_STREAM latm;
 
@@ -214,6 +218,7 @@ static INT getPceRepetitionRate(const CHANNEL_MODE channelMode,
             }
           case TT_MP4_LOAS:      /* PCE in ASC if chChonfig==0 */
           case TT_MP4_LATM_MCP1: /* PCE in ASC if chChonfig==0 */
+          case TT_DABPLUS:
           default:
             pceFrameCounter = -1; /* no PCE in raw_data_block */
         }
@@ -232,6 +237,7 @@ static INT getPceRepetitionRate(const CHANNEL_MODE channelMode,
             case TT_MP4_RAW:
               pceFrameCounter = headerPeriod;
               break;
+            case TT_DABPLUS:
             default:
               pceFrameCounter = -1; /* no PCE in raw_data_block */
           }                         /* switch transportFmt */
@@ -293,6 +299,18 @@ TRANSPORTENC_ERROR transportEnc_Init(HANDLE_TRANSPORTENC hTpEnc,
         return TRANSPORTENC_INVALID_PARAMETER;
       }
       break;
+
+  case TT_DABPLUS:
+    /* Sanity checks */
+    if ( ( hTpEnc->config.aot != AOT_AAC_LC)
+       ||(hTpEnc->config.samplesPerFrame != 960) )
+    {
+      return TRANSPORTENC_INVALID_PARAMETER;
+    }
+    if ( dabWrite_Init(&hTpEnc->writer.dab, &hTpEnc->config) != 0) {
+      return TRANSPORTENC_INVALID_PARAMETER;
+    }
+    break;
 
     case TT_MP4_LOAS:
     case TT_MP4_LATM_MCP0:
@@ -409,6 +427,17 @@ TRANSPORTENC_ERROR transportEnc_WriteAccessUnit(HANDLE_TRANSPORTENC hTp,
       adtsWrite_EncodeHeader(&hTp->writer.adts, &hTp->bitStream, bufferFullness,
                              frameUsedBits);
       break;
+    case TT_DABPLUS:
+      bufferFullness /= ncc;                          /* Number of Considered Channels */
+      bufferFullness /= 32;
+      bufferFullness = FDKmin(0x7FF, bufferFullness); /* Signal variable rate */
+      dabWrite_EncodeHeader(
+             &hTp->writer.dab,
+             &hTp->bitStream,
+              bufferFullness,
+              frameUsedBits
+              );
+      break;
     case TT_MP4_LOAS:
     case TT_MP4_LATM_MCP0:
     case TT_MP4_LATM_MCP1:
@@ -477,6 +506,9 @@ TRANSPORTENC_ERROR transportEnc_EndAccessUnit(HANDLE_TRANSPORTENC hTp,
     case TT_MP4_ADTS:
       adtsWrite_EndRawDataBlock(&hTp->writer.adts, &hTp->bitStream, bits);
       break;
+    case TT_DABPLUS:
+      dabWrite_EndRawDataBlock(&hTp->writer.dab, &hTp->bitStream, bits);
+      break;
     case TT_MP4_ADIF:
       /* Substract ADIF header from AU bits, not to be considered. */
       *bits -= adifWrite_GetHeaderBits(&hTp->writer.adif);
@@ -509,6 +541,14 @@ TRANSPORTENC_ERROR transportEnc_GetFrame(HANDLE_TRANSPORTENC hTpEnc,
           hTpEnc->writer.adts.num_raw_blocks + 1) {
         *nbytes = (FDKgetValidBits(hBs) + 7) >> 3;
         hTpEnc->writer.adts.currentBlock = 0;
+      } else {
+        *nbytes = 0;
+      }
+      break;
+    case TT_DABPLUS:
+      if (hTpEnc->writer.dab.currentBlock >= hTpEnc->writer.dab.num_raw_blocks+1) {
+        *nbytes = (FDKgetValidBits(hBs) + 7)>>3;
+        hTpEnc->writer.dab.currentBlock = 0;
       } else {
         *nbytes = 0;
       }
@@ -550,6 +590,9 @@ INT transportEnc_GetStaticBits(HANDLE_TRANSPORTENC hTp, int auBits) {
     case TT_MP4_ADTS:
       nbits = adtsWrite_GetHeaderBits(&hTp->writer.adts);
       break;
+    case TT_DABPLUS:
+      nbits = dabWrite_CountTotalBitDemandHeader(&hTp->writer.dab, auBits);
+      break;
     case TT_MP4_LOAS:
     case TT_MP4_LATM_MCP0:
     case TT_MP4_LATM_MCP1:
@@ -584,6 +627,9 @@ int transportEnc_CrcStartReg(HANDLE_TRANSPORTENC hTpEnc, int mBits) {
       crcReg = adtsWrite_CrcStartReg(&hTpEnc->writer.adts, &hTpEnc->bitStream,
                                      mBits);
       break;
+    case TT_DABPLUS:
+      crcReg = dabWrite_CrcStartReg(&hTpEnc->writer.dab, &hTpEnc->bitStream, mBits);
+      break;
     default:
       break;
   }
@@ -595,6 +641,9 @@ void transportEnc_CrcEndReg(HANDLE_TRANSPORTENC hTpEnc, int reg) {
   switch (hTpEnc->transportFmt) {
     case TT_MP4_ADTS:
       adtsWrite_CrcEndReg(&hTpEnc->writer.adts, &hTpEnc->bitStream, reg);
+      break;
+    case TT_DABPLUS:
+      dabWrite_CrcEndReg(&hTpEnc->writer.dab, &hTpEnc->bitStream, reg);
       break;
     default:
       break;
@@ -657,7 +706,7 @@ TRANSPORTENC_ERROR transportEnc_GetLibInfo(LIB_INFO *info) {
 
   /* Set flags */
   info->flags =
-      0 | CAPF_ADIF | CAPF_ADTS | CAPF_LATM | CAPF_LOAS | CAPF_RAWPACKETS;
+      0 | CAPF_ADIF | CAPF_ADTS | CAPF_LATM | CAPF_LOAS | CAPF_RAWPACKETS | CAPF_DAB_AAC;
 
   return TRANSPORTENC_OK;
 }

@@ -484,6 +484,7 @@ AAC_ENCODER_ERROR FDKaacEnc_AdjustBitrate(
 {
   INT paddingOn;
   INT frameLen;
+  //fprintf(stderr, "hQC->padding.paddingRest=%d bytes! (before)\n", hQC->padding.paddingRest);
 
   /* Do we need an extra padding byte? */
   paddingOn = FDKaacEnc_framePadding(bitRate, sampleRate, granuleLength,
@@ -1372,6 +1373,8 @@ AAC_ENCODER_ERROR FDKaacEnc_FinalizeBitConsumption(
    * extension data entity */
   qcOut->totFillBits = FDKaacEnc_writeExtensionData(NULL, &fillExtPayload, 0, 0,
                                                     syntaxFlags, aot, epConfig);
+
+  //fprintf(stderr, "FinalizeBitConsumption():  totFillBits=%d, qcOut->totFillBits=%d \n", totFillBits, qcOut->totFillBits);
 
   /* now distribute extra fillbits and alignbits */
   alignBits =

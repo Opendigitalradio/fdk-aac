@@ -2096,7 +2096,7 @@ INT sbrEncoder_Init(HANDLE_SBR_ENCODER hSbrEncoder,
     *downSampleFactor = 2;
   }
 
-  if (aot == AOT_PS) {
+  if (aot == AOT_PS || aot == AOT_DABPLUS_PS) {
     usePs = 1;
   }
   if (aot == AOT_ER_AAC_ELD) {

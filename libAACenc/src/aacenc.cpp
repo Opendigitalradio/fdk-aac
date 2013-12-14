@@ -186,6 +186,7 @@ INT FDKaacEnc_LimitBitrate(HANDLE_TRANSPORTENC hTpEnc, AUDIO_OBJECT_TYPE aot,
 
   } while (prevBitRate != bitRate && iter++ < 3);
 
+  //fprintf(stderr, "FDKaacEnc_LimitBitrate(): bitRate=%d\n", bitRate);
   return bitRate;
 }
 
@@ -431,6 +432,36 @@ AAC_ENCODER_ERROR FDKaacEnc_Initialize(
     return AAC_ENC_UNSUPPORTED_BITRATE;
   }
 
+  INT superframe_size = 110*8*(config->bitRate/8000);
+  INT frames_per_superframe = 6;
+  INT staticBits = 0;
+  if((config->syntaxFlags & AC_DAB) && hTpEnc) {
+     staticBits = transportEnc_GetStaticBits(hTpEnc, 0);
+     switch(config->sampleRate) {
+     case 48000:
+    	 frames_per_superframe=6;
+    	 break;
+     case 32000:
+    	 frames_per_superframe=4;
+    	 break;
+     case 24000:
+    	 frames_per_superframe=3;
+    	 break;
+     case 16000:
+    	 frames_per_superframe=2;
+    	 break;
+     }
+
+     //config->nSubFrames = frames_per_superframe;
+     //fprintf(stderr, "DAB+ superframe size=%d\n", superframe_size);
+     config->bitRate = (superframe_size - 16*(frames_per_superframe-1) - staticBits) * 1000/120;
+     //fprintf(stderr, "DAB+ tuned bitrate=%d\n", config->bitRate);
+     config->maxBitsPerFrame  = (superframe_size - 16*(frames_per_superframe-1) - staticBits) / frames_per_superframe;
+     config->maxBitsPerFrame += 7; /*padding*/
+     //config->bitreservoir=(superframe_size - 16*(frames_per_superframe-1) - staticBits - 2*8)/frames_per_superframe;
+     //fprintf(stderr, "DAB+ tuned maxBitsPerFrame=%d\n", (superframe_size - 16*(frames_per_superframe-1) - staticBits)/frames_per_superframe);
+  }
+
   /* check bit rate */
 
   if (FDKaacEnc_LimitBitrate(
@@ -454,6 +485,7 @@ AAC_ENCODER_ERROR FDKaacEnc_Initialize(
   /* check frame length */
   switch (config->framelength) {
     case 1024:
+    case 960:
       if (isLowDelay(config->audioObjectType)) {
         return AAC_ENC_INVALID_FRAME_LENGTH;
       }

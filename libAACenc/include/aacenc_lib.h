@@ -1340,6 +1340,7 @@ typedef enum {
   AACENC_GRANULE_LENGTH =
       0x0105, /*!< Core encoder (AAC) audio frame length in samples:
                    - 1024: Default configuration.
+                   - 960: DRM/DAB+.
                    - 512: Default length in LD/ELD configuration.
                    - 480: Length in LD/ELD configuration.
                    - 256: Length for ELD reduced delay mode (x2).
@@ -1503,6 +1504,7 @@ typedef enum {
       0x0303, /*!< Number of sub frames in a transport frame for LOAS/LATM or
                  ADTS (default 1).
                    - ADTS: Maximum number of sub frames restricted to 4.
+                   - DAB+: Maximum number of sub frames restricted to 6.
                    - LOAS/LATM: Maximum number of sub frames restricted to 2.*/
 
   AACENC_AUDIOMUXVER =

@@ -145,7 +145,8 @@ typedef enum {
 
   TT_MP4_LOAS = 10, /**< Audio Sync Stream.         */
 
-  TT_DRM = 12 /**< Digital Radio Mondial (DRM30/DRM+) bitstream format. */
+  TT_DRM               = 12, /**< Digital Radio Mondial (DRM30/DRM+) bitstream format. */
+  TT_DABPLUS           = 13 /**< Digital Audio Broadcastong (DAB+) superframes bitstream format. */
 
 } TRANSPORT_TYPE;
 
@@ -204,6 +205,11 @@ typedef enum {
   AOT_USAC = 42,     /**< USAC                                      */
   AOT_SAOC = 43,     /**< SAOC                                      */
   AOT_LD_MPEGS = 44, /**< Low Delay MPEG Surround                   */
+
+  AOT_DABPLUS_AAC_LC   = 135, /**< Virtual AOT for DAB plus AAC-LC                        */
+  AOT_DABPLUS_SBR      = 136, /**< Virtual AOT for DAB plus HE-AAC                        */
+  AOT_DABPLUS_PS       = 137, /**< Virtual AOT for DAB plus HE-AAC v2                     */
+
 
   /* Pseudo AOTs */
   AOT_MP2_AAC_LC = 129, /**< Virtual AOT MP2 Low Complexity profile */
@@ -625,6 +631,14 @@ typedef enum {
   0x00000080 /**< Support flag for ELD reduced delay mode        */
 #define CAPF_SBR_HBEHQ \
   0x00000100 /**< Support flag for HQ HBE                        */
+
+/* DAB capability flags */
+#define CAPF_DAB_MP2          0x00000001  /**< Support flag for Layer2 DAB.                   */
+#define CAPF_DAB_AAC          0x00000002  /**< Support flag for DAB+ (HE-AAC v2).             */
+#define CAPF_DAB_PAD          0x00000004  /**< Support flag for PAD extraction.               */
+#define CAPF_DAB_DRC          0x00000008  /**< Support flag for Dynamic Range Control.        */
+#define CAPF_DAB_SURROUND     0x00000010  /**< Support flag for DAB Surround (MPS).           */
+
 
 /* PCM utils capability flags */
 #define CAPF_DMX_BLIND \

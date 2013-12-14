@@ -7137,6 +7137,9 @@ const element_list_t *getBitstreamElementList(AUDIO_OBJECT_TYPE aot,
     case AOT_AAC_LC:
     case AOT_SBR:
     case AOT_PS:
+    case AOT_DABPLUS_AAC_LC:
+    case AOT_DABPLUS_SBR:
+    case AOT_DABPLUS_PS:
       FDK_ASSERT(epConfig == -1);
       if (elFlags & AC_EL_GA_CCE) {
         return &node_aac_cce;
