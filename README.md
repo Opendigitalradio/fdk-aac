@@ -52,7 +52,7 @@ This package:
     cd fdk-aac-dabplus
     ./bootstrap
     ./configure
-    make
+    make CXXFLAGS="-Wno-narrowing -std=gnu++11"
     sudo make install
 
 If you want to use the JACK and libVLC input, please use
