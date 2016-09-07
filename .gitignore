@@ -4,6 +4,7 @@
 .deps
 .libs
 .dirstamp
+.idea
 Makefile
 Makefile.in
 aclocal.m4

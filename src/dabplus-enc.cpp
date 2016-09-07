@@ -80,6 +80,7 @@ extern "C" {
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
+#include <numeric>
 
 #include "libAACenc/include/aacenc_lib.h"
 
@@ -192,6 +193,7 @@ void usage(const char* name) {
     "     -P, --pad-fifo=FILENAME              Set PAD data input fifo name"
     "                                          (default: /tmp/pad.fifo).\n"
     "     -l, --level                          Show peak audio level indication.\n"
+    "     -L, --level-fifo=FILENAME            Named pipe to send audio level data.\n"
     "     -s, --silence=TIMEOUT                Abort encoding after TIMEOUT seconds of silence.\n"
     "\n"
     "Only the tcp:// zeromq transport has been tested until now,\n"
@@ -377,6 +379,10 @@ int main(int argc, char *argv[])
     int peak_left  = 0;
     int peak_right = 0;
 
+    /* Keep track of peaks average over time */
+    std::vector< int > peaks_left(100);
+    std::vector< int > peaks_right(100);
+
     /* On silence, die after the silence_timeout expires */
     bool die_on_silence = false;
     int silence_timeout = 0;
@@ -392,6 +398,10 @@ int main(int argc, char *argv[])
 
     /* Whether to show the 'sox'-like measurement */
     int show_level = 0;
+
+    /* fifo that holds level values */
+    const char* level_fifo = false;
+    int level_fd;
 
     /* Data for ZMQ CURVE authentication */
     char* keyfile = NULL;
@@ -424,6 +434,7 @@ int main(int argc, char *argv[])
         {"fifo-silence",           no_argument,        0,  3 },
         {"help",                   no_argument,        0, 'h'},
         {"level",                  no_argument,        0, 'l'},
+        {"level-fifo",             required_argument,  0, 'L'},
         {"no-afterburner",         no_argument,        0, 'A'},
         {"ps",                     no_argument,        0,  2 },
         {"sbr",                    no_argument,        0,  1 },
@@ -518,6 +529,9 @@ int main(int argc, char *argv[])
             break;
         case 'P':
             pad_fifo = optarg;
+            break;
+        case 'L':
+            level_fifo = optarg;
             break;
         case 'r':
             sample_rate = atoi(optarg);
@@ -685,6 +699,24 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+
+    if (level_fifo) {
+        int flags;
+        if (mkfifo(level_fifo, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH) != 0) {
+            if (errno != EEXIST) {
+                fprintf(stderr, "Can't create level file: %d!\n", errno);
+                return 1;
+            }
+        }
+        level_fd = open(level_fifo, O_RDWR | O_NONBLOCK);
+        if (level_fd == -1) {
+            fprintf(stderr, "Can't open level file!\n");
+            return 1;
+        }
+    }
+
+
+
 
 
     std::vector<uint8_t> input_buf;
@@ -1278,6 +1310,32 @@ int main(int argc, char *argv[])
                     fprintf(stderr, "U");
                 }
 
+            }
+
+            if(level_fifo) {
+                peaks_left.push_back(peak_left);
+                peaks_right.push_back(peak_right);
+                peaks_left.erase(peaks_left.begin(), peaks_left.begin() + 1);
+                peaks_right.erase(peaks_right.begin(), peaks_right.begin() + 1);
+
+                int peaks_left_avg = 1.0 * accumulate(
+                        peaks_left.begin(),
+                        peaks_left.end(), 0LL) / peaks_left.size();
+
+                int peaks_right_avg = 1.0 * accumulate(
+                        peaks_right.begin(),
+                        peaks_right.end(), 0LL) / peaks_right.size();
+
+                char buff[100];
+                snprintf(buff, sizeof(buff), "%.3g:%.3g,%.3g:%.3g\n",
+                         ((double)peaks_left_avg/INT16_MAX),
+                         ((double)peaks_right_avg/INT16_MAX),
+                         ((double)peak_left/INT16_MAX),
+                         ((double)peak_right/INT16_MAX));
+                string buffAsStdStr = buff;
+
+                const void * l_str = buffAsStdStr.c_str();
+                write(level_fd, buffAsStdStr.c_str(), buffAsStdStr.size());
             }
 
             peak_right = 0;
