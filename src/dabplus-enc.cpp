@@ -1309,13 +1309,11 @@ int main(int argc, char *argv[])
             }
 
             if(level_fifo) {
-
                 char buff[100];
                 snprintf(buff, sizeof(buff), "%.3g:%.3g\n",
                          ((double)peak_left/INT16_MAX),
                          ((double)peak_right/INT16_MAX));
                 string level_str = buff;
-
                 write(level_fd, level_str.c_str(), level_str.size());
             }
 
