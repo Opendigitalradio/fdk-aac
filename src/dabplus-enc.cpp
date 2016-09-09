@@ -379,10 +379,6 @@ int main(int argc, char *argv[])
     int peak_left  = 0;
     int peak_right = 0;
 
-    /* Keep track of peaks average over time */
-    std::vector< int > peaks_left(100);
-    std::vector< int > peaks_right(100);
-
     /* On silence, die after the silence_timeout expires */
     bool die_on_silence = false;
     int silence_timeout = 0;
@@ -1313,29 +1309,14 @@ int main(int argc, char *argv[])
             }
 
             if(level_fifo) {
-                peaks_left.push_back(peak_left);
-                peaks_right.push_back(peak_right);
-                peaks_left.erase(peaks_left.begin(), peaks_left.begin() + 1);
-                peaks_right.erase(peaks_right.begin(), peaks_right.begin() + 1);
-
-                int peaks_left_avg = 1.0 * accumulate(
-                        peaks_left.begin(),
-                        peaks_left.end(), 0LL) / peaks_left.size();
-
-                int peaks_right_avg = 1.0 * accumulate(
-                        peaks_right.begin(),
-                        peaks_right.end(), 0LL) / peaks_right.size();
 
                 char buff[100];
-                snprintf(buff, sizeof(buff), "%.3g:%.3g,%.3g:%.3g\n",
-                         ((double)peaks_left_avg/INT16_MAX),
-                         ((double)peaks_right_avg/INT16_MAX),
+                snprintf(buff, sizeof(buff), "%.3g:%.3g\n",
                          ((double)peak_left/INT16_MAX),
                          ((double)peak_right/INT16_MAX));
-                string buffAsStdStr = buff;
+                string level_str = buff;
 
-                const void * l_str = buffAsStdStr.c_str();
-                write(level_fd, buffAsStdStr.c_str(), buffAsStdStr.size());
+                write(level_fd, level_str.c_str(), level_str.size());
             }
 
             peak_right = 0;
