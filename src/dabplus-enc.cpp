@@ -80,7 +80,6 @@ extern "C" {
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#include <numeric>
 
 #include "libAACenc/include/aacenc_lib.h"
 
