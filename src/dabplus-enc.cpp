@@ -709,11 +709,7 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
-
-
-
-
-
+    
     std::vector<uint8_t> input_buf;
 
     HANDLE_AACENCODER encoder;
