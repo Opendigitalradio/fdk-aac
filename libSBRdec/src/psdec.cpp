@@ -938,13 +938,13 @@ void initSlotBasedRotation( HANDLE_PS_DEC h_ps_d, /*!< pointer to the module sta
 
   INT     group = 0;
   INT     bin =  0;
-  INT     noIidSteps;
+  INT     noIidSteps, noFactors;
 
 /*  const UCHAR *pQuantizedIIDs;*/
 
   FIXP_SGL  invL;
   FIXP_DBL  ScaleL, ScaleR;
-  FIXP_DBL  Alpha, Beta;
+  FIXP_DBL  Alpha, Beta, AlphasValue;
   FIXP_DBL  h11r, h12r, h21r, h22r;
 
   const FIXP_DBL  *PScaleFactors;
@@ -984,6 +984,7 @@ void initSlotBasedRotation( HANDLE_PS_DEC h_ps_d, /*!< pointer to the module sta
   {
     PScaleFactors = ScaleFactorsFine; /* values are shiftet right by one */
     noIidSteps = NO_IID_STEPS_FINE;
+    noFactors = NO_IID_LEVELS_FINE;
     /*pQuantizedIIDs = quantizedIIDsFine;*/
   }
 
@@ -991,6 +992,7 @@ void initSlotBasedRotation( HANDLE_PS_DEC h_ps_d, /*!< pointer to the module sta
   {
     PScaleFactors = ScaleFactors; /* values are shiftet right by one */
     noIidSteps = NO_IID_STEPS;
+    noFactors = NO_IID_LEVELS;
     /*pQuantizedIIDs = quantizedIIDs;*/
   }
 
@@ -1012,11 +1014,17 @@ void initSlotBasedRotation( HANDLE_PS_DEC h_ps_d, /*!< pointer to the module sta
 
     /* ScaleR and ScaleL are scaled by 1 shift right */
 
-    ScaleR = PScaleFactors[noIidSteps + h_ps_d->specificTo.mpeg.coef.aaIidIndexMapped[env][bin]];
-    ScaleL = PScaleFactors[noIidSteps - h_ps_d->specificTo.mpeg.coef.aaIidIndexMapped[env][bin]];
+    ScaleL = ScaleR = 0;
+    if (noIidSteps + h_ps_d->specificTo.mpeg.coef.aaIidIndexMapped[env][bin] >= 0 && noIidSteps + h_ps_d->specificTo.mpeg.coef.aaIidIndexMapped[env][bin] < noFactors)
+      ScaleR = PScaleFactors[noIidSteps + h_ps_d->specificTo.mpeg.coef.aaIidIndexMapped[env][bin]];
+    if (noIidSteps - h_ps_d->specificTo.mpeg.coef.aaIidIndexMapped[env][bin] >= 0 && noIidSteps - h_ps_d->specificTo.mpeg.coef.aaIidIndexMapped[env][bin] < noFactors)
+      ScaleL = PScaleFactors[noIidSteps - h_ps_d->specificTo.mpeg.coef.aaIidIndexMapped[env][bin]];
 
-    Beta   = fMult (fMult( Alphas[h_ps_d->specificTo.mpeg.coef.aaIccIndexMapped[env][bin]], ( ScaleR - ScaleL )), FIXP_SQRT05);
-    Alpha  = Alphas[h_ps_d->specificTo.mpeg.coef.aaIccIndexMapped[env][bin]]>>1;
+    AlphasValue = 0;
+    if (h_ps_d->specificTo.mpeg.coef.aaIccIndexMapped[env][bin] >= 0)
+      AlphasValue = Alphas[h_ps_d->specificTo.mpeg.coef.aaIccIndexMapped[env][bin]];
+    Beta   = fMult (fMult( AlphasValue, ( ScaleR - ScaleL )), FIXP_SQRT05);
+    Alpha  = AlphasValue>>1;
 
     /* Alpha and Beta are now both scaled by 2 shifts right */
 
