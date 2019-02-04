@@ -1620,7 +1620,7 @@ AACENC_ERROR aacEncOpen(HANDLE_AACENCODER *phAacEncoder, const UINT encModules,
   hAacEncoder->outBufferInBytes =
       1 << (DFRACT_BITS - CntLeadingZeros(fixMax(
                               1, ((1) * hAacEncoder->nMaxAacChannels * 6144) >>
-                                     3))); /* buffer has to be 2^n */
+                                     2))); /* buffer has to be 2^n */
   if (NULL == (hAacEncoder->outBuffer = (UCHAR *)FDKcalloc(
                    hAacEncoder->outBufferInBytes, sizeof(UCHAR)))) {
     err = AACENC_MEMORY_ERROR;
